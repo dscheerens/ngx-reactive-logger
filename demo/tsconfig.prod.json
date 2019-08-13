@@ -1,0 +1,10 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "paths": {
+            "ngx-reactive-logger": [
+                "../build/dist"
+            ]
+        }
+    }
+}
