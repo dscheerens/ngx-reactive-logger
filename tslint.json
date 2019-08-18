@@ -1,4 +1,6 @@
 {
     "extends": "@dscheerens/tslint-presets/tslint.recommended.angular.json",
-    "rules": { }
+    "rules": {
+        "unified-signatures": false
+    }
 }

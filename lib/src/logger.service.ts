@@ -1,11 +1,12 @@
 import { Injectable, Inject, Optional } from '@angular/core';
 import { Observable, Subject, SubscriptionLike } from 'rxjs';
 
+import { LogAnnotations, MutableLogAnnotations } from './log-annotation.model';
+import { LOG_ANNOTATOR, LogAnnotator } from './log-annotator.model';
+import { ERROR } from './log-annotations';
 import { AnnotatableLogEvent, LogEvent } from './log-event.model';
 import { LogLevel } from './log-level.model';
-import { LogAnnotations, MutableLogAnnotations } from './log-annotation.model';
 import { LOG_OBSERVER, LogObserver } from './log-observer.model';
-import { LOG_ANNOTATOR, LogAnnotator } from './log-annotator.model';
 
 @Injectable({ providedIn: 'root' })
 export class LoggerService {
@@ -27,13 +28,43 @@ export class LoggerService {
         (logObservers || []).forEach((logObserver) => this.subscribe(logObserver));
     }
 
-    public log(level: LogLevel, message: string): void {
-        const logEvent =
-            this.logAnnotators.length === 0
-            ? createLogEvent(level, message, false)
-            : convertToReadonlyLogEvent(this.logAnnotators.reduce(annotateLogEvent, createLogEvent(level, message, true)));
+    public debug(message: string, annotations?: LogAnnotations): void {
+        this.log(LogLevel.DEBUG, message, annotations);
+    }
 
-        this.publishLogEvent(logEvent);
+    public info(message: string, annotations?: LogAnnotations): void {
+        this.log(LogLevel.INFO, message, annotations);
+    }
+
+    public warning(message: string): void;
+    public warning(message: string, annotations: LogAnnotations): void;
+    public warning(message: string, error: unknown): void;
+    public warning(message: string, error: unknown, annotations: LogAnnotations): void;
+    public warning(message: string, errorOrAnnotations?: unknown, annotations?: LogAnnotations): void {
+        this.log(LogLevel.WARNING, message, getAnnotations(errorOrAnnotations, annotations));
+    }
+
+    public error(message: string): void;
+    public error(message: string, annotations: LogAnnotations): void;
+    public error(message: string, error: unknown): void;
+    public error(message: string, error: unknown, annotations: LogAnnotations): void;
+    public error(message: string, errorOrAnnotations?: unknown, annotations?: LogAnnotations): void {
+        this.log(LogLevel.ERROR, message, getAnnotations(errorOrAnnotations, annotations));
+    }
+
+    public log(level: LogLevel, message: string, annotations: LogAnnotations = new MutableLogAnnotations()): void {
+
+        const logEvent = this.logAnnotators.reduce(annotateLogEvent, {
+            timestamp: Date.now(),
+            level,
+            message,
+            annotations: annotations.asMutable()
+        });
+
+        this.publishLogEvent({
+            ...logEvent,
+            annotations: logEvent.annotations.asReadonly()
+        });
     }
 
     public subscribe(logObserver: LogObserver): SubscriptionLike {
@@ -46,26 +77,22 @@ export class LoggerService {
 
 }
 
-function createLogEvent(level: LogLevel, message: string, annotatable: false): LogEvent;
-function createLogEvent(level: LogLevel, message: string, annotatable: true): AnnotatableLogEvent;
-function createLogEvent(level: LogLevel, message: string, annotatable: boolean): LogEvent {
-    return {
-        timestamp: Date.now(),
-        level,
-        message,
-        annotations: annotatable ? new MutableLogAnnotations() : new LogAnnotations()
-    };
-}
-
-function convertToReadonlyLogEvent(logEvent: AnnotatableLogEvent): LogEvent {
-    return {
-        ...logEvent,
-        annotations: logEvent.annotations.asReadonly()
-    };
-}
-
 function annotateLogEvent(logEvent: AnnotatableLogEvent, annotator: LogAnnotator): AnnotatableLogEvent {
     annotator.annotateLogEvent(logEvent);
 
     return logEvent;
+}
+
+function getAnnotations(errorOrAnnotations?: unknown, annotations?: LogAnnotations): MutableLogAnnotations {
+    const result = (
+        errorOrAnnotations instanceof LogAnnotations ? errorOrAnnotations.asMutable() :
+        annotations instanceof LogAnnotations ? annotations.asMutable() :
+        new MutableLogAnnotations()
+    );
+
+    if (errorOrAnnotations !== undefined && !(errorOrAnnotations instanceof LogAnnotations)) {
+        result.set(ERROR, errorOrAnnotations);
+    }
+
+    return result;
 }
