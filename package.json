@@ -43,7 +43,7 @@
     "@angular/common": "^8.2.1",
     "@angular/compiler": "^8.2.1",
     "@angular/compiler-cli": "^8.2.1",
-    "@angular/core": "^8.2.1",
+    "@angular/core": "^11.0.5",
     "@angular/platform-browser": "^8.2.1",
     "@angular/platform-browser-dynamic": "^8.2.1",
     "@dscheerens/tslint-presets": "^6.0.0",
